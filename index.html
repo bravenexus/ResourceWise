@@ -65,7 +65,28 @@
         <aside class="site-panel" aria-labelledby="site-heading">
           <div class="panel-top"><span class="panel-kicker">CAPE TOWN · CITY MAPS</span><span class="live-dot" aria-hidden="true"></span></div>
           <h3 id="site-heading">Find your starting point</h3>
-          <p class="muted">Only official sites returned by the City map service can be selected.</p>
+          <p class="muted">Search a Cape Town suburb or area to find City-mapped sites nearby.</p>
+          <form id="area-search-form" class="area-search-form">
+            <label for="area-search">Suburb or area</label>
+            <div class="area-search-row">
+              <input id="area-search" type="search" placeholder="e.g. Sea Point" autocomplete="off" required>
+              <button class="button button-dark" type="submit">Find</button>
+            </div>
+            <p class="field-hint">Place lookup by OpenStreetMap. Select a match to load nearby City sites.</p>
+            <p id="area-search-status" class="data-status" role="status" aria-live="polite"></p>
+          </form>
+          <div id="area-results-wrap" hidden>
+            <label for="area-results">Choose an area</label>
+            <select id="area-results"><option value="">Select a matching area…</option></select>
+          </div>
+          <fieldset class="site-filters">
+            <legend>Filter mapped types</legend>
+            <label><input type="checkbox" data-site-type="12" checked><span>Undeveloped</span></label>
+            <label><input type="checkbox" data-site-type="15" checked><span>Community gardens</span></label>
+            <label><input type="checkbox" data-site-type="1" checked><span>Public open space</span></label>
+            <label><input type="checkbox" data-site-type="10" checked><span>Community parks</span></label>
+            <label><input type="checkbox" data-site-type="9,11" checked><span>District parks &amp; greenbelts</span></label>
+          </fieldset>
           <label for="site-select">Mapped site</label>
           <select id="site-select" disabled>
             <option value="">Loading mapped sites…</option>
@@ -75,18 +96,19 @@
             <p class="detail-label">OFFICIAL SITE NAME</p>
             <h4 id="selected-name"></h4>
             <dl id="selected-attributes"></dl>
+            <div id="site-start-guidance" class="site-start-guidance"></div>
           </div>
-          <p class="site-disclaimer">Mapped does not mean available, accessible, approved or suitable for cultivation. Confirm ownership and permissions before any activity.</p>
+          <p class="site-disclaimer">A mapped classification is not confirmation of land availability, public access, approval or suitability for cultivation.</p>
           <a class="text-link" href="https://citymaps.capetown.gov.za/agsext/rest/services/Theme_Based/ODP_SPLIT_2/FeatureServer/3" target="_blank" rel="noopener noreferrer">View City source layer <span aria-hidden="true">↗</span></a>
         </aside>
       </div>
-      <p class="source-note">Official source: City of Cape Town ArcGIS FeatureServer · Parks layer. Map tiles © OpenStreetMap contributors.</p>
+      <p class="source-note">Official site data: City of Cape Town Parks layer. Area lookup © OpenStreetMap contributors. Map tiles © OpenStreetMap contributors.</p>
     </section>
 
     <section class="section project-section" id="start-a-project">
       <div class="section-heading">
         <div><p class="eyebrow">02 / IMAGINE</p><h2>What could grow here?</h2></div>
-        <p class="section-lede">Shape an idea around the people and place. Your answers help draft an enquiry — they don’t submit it.</p>
+        <p class="section-lede">A simple dream is enough to start. Add any details you already know; the enquiry is editable and is never sent automatically.</p>
       </div>
       <div class="project-grid">
         <form id="proposal-form" class="proposal-form">
@@ -101,17 +123,17 @@
             <option value="Regenerative social enterprise">Regenerative social enterprise</option>
           </select>
           <div class="form-step form-step-spaced"><span>02</span><div><h3>Share the outline</h3><p>A few details make a stronger first conversation.</p></div></div>
-          <label for="purpose">What is the purpose of this project?</label>
-          <textarea id="purpose" rows="3" placeholder="What would you like to grow, restore or make possible?" required></textarea>
-          <label for="participants">Who would take part?</label>
-          <textarea id="participants" rows="2" placeholder="Neighbours, a school, a local group…" required></textarea>
-          <label for="benefits">What would the community gain?</label>
-          <textarea id="benefits" rows="2" placeholder="Food, skills, livelihoods, connection…" required></textarea>
+          <label for="purpose">What is your project dream?</label>
+          <textarea id="purpose" rows="3" placeholder="Even a simple idea is enough — what would you love to make possible?"></textarea>
+          <label for="participants">Who might take part? <span class="optional-label">Optional</span></label>
+          <textarea id="participants" rows="2" placeholder="Neighbours, a school, a local group…"></textarea>
+          <label for="benefits">What might the community gain? <span class="optional-label">Optional</span></label>
+          <textarea id="benefits" rows="2" placeholder="Food, skills, livelihoods, connection…"></textarea>
           <div class="form-row">
-            <div><label for="water">Water approach or questions</label><textarea id="water" rows="2" placeholder="What needs to be explored?"></textarea></div>
-            <div><label for="soil">Soil restoration approach</label><textarea id="soil" rows="2" placeholder="Compost, ground cover, soil health…"></textarea></div>
+            <div><label for="water">Water questions <span class="optional-label">Optional</span></label><textarea id="water" rows="2" placeholder="What needs to be explored?"></textarea></div>
+            <div><label for="soil">Soil restoration idea <span class="optional-label">Optional</span></label><textarea id="soil" rows="2" placeholder="Compost, ground cover, soil health…"></textarea></div>
           </div>
-          <label for="maintenance">How could ongoing care be shared?</label>
+          <label for="maintenance">How could ongoing care be shared? <span class="optional-label">Optional</span></label>
           <textarea id="maintenance" rows="2" placeholder="Who might steward the space, and how?"></textarea>
           <button class="button button-dark generate-button" type="submit">Draft a municipal enquiry <span aria-hidden="true">→</span></button>
           <p class="form-hint">Select an official mapped site above before drafting.</p>
@@ -125,17 +147,17 @@
             <div class="copy-row"><button id="copy-button" class="button button-outline" type="button" disabled>Copy enquiry</button><span id="copy-status" role="status" aria-live="polite"></span></div>
           </div>
           <div class="readiness-card">
-            <div class="readiness-heading"><div><p class="eyebrow">BEFORE ANY PLANTING</p><h3>Project readiness</h3></div><span class="readiness-count" id="readiness-count">0 / 6</span></div>
-            <p class="muted">A lightweight personal tracker saved on this device. Mapped status is not permission.</p>
-            <ul id="readiness-list" class="readiness-list">
-              <li><label><input type="checkbox" data-readiness="site"><span>Site identified</span></label></li>
-              <li><label><input type="checkbox" data-readiness="enquiry"><span>Municipal enquiry prepared</span></label></li>
-              <li><label><input type="checkbox" data-readiness="permission"><span>Permission status confirmed (still pending)</span></label></li>
-              <li><label><input type="checkbox" data-readiness="water"><span>Water feasibility investigated</span></label></li>
-              <li><label><input type="checkbox" data-readiness="partners"><span>Community partners identified</span></label></li>
-              <li><label><input type="checkbox" data-readiness="stewardship"><span>Stewardship plan developed</span></label></li>
-            </ul>
-            <p class="permission-note">Before planting: confirm land ownership, permitted use, municipal approvals, water access and long-term maintenance responsibilities.</p>
+            <div class="readiness-heading"><div><p class="eyebrow">PRACTICAL NEXT STEPS</p><h3>Questions to work through</h3></div><span class="draft-icon" aria-hidden="true">↗</span></div>
+            <p class="muted">Use these prompts to guide conversations before investing time or materials.</p>
+            <ol class="guided-steps">
+              <li><strong>Find out who manages the land.</strong><span>Ask the City to confirm the current owner and responsible department. A map classification does not establish either.</span></li>
+              <li><strong>Check zoning and site constraints.</strong><span>Ask whether your idea can be considered under the site's zoning and any environmental or operational limits.</span></li>
+              <li><strong>Ask for permission and the right process.</strong><span>Request written confirmation of whether the activity may be considered and what application or approvals apply.</span></li>
+              <li><strong>Build a committed community team.</strong><span>Talk with neighbours and potential partners about shared goals, roles, time and ongoing stewardship.</span></li>
+              <li><strong>Investigate water access.</strong><span>Confirm whether a water source is available, who may use it and any conditions or costs.</span></li>
+            </ol>
+            <p class="permission-note">The City’s community food-garden guidance lists written permission for at least five years, fencing, water access and committed community members as requirements when seeking City support. Ask how these apply to your site and idea.</p>
+            <a class="text-link city-garden-link" href="https://www.capetown.gov.za/local-and-communities/community-building-and-upliftment/start-a-food-revolution/start-a-community-food-garden/" target="_blank" rel="noopener noreferrer">Read the City’s “Start a community food garden” guidance <span aria-hidden="true">↗</span></a>
           </div>
         </div>
       </div>

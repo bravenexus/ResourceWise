@@ -9,14 +9,22 @@
   const proposalForm = document.getElementById("proposal-form");
   const proposalOutput = document.getElementById("proposal-output");
   const copyButton = document.getElementById("copy-button");
-  const readinessInputs = Array.from(document.querySelectorAll("[data-readiness]"));
-  const readinessCount = document.getElementById("readiness-count");
+  const areaSearchForm = document.getElementById("area-search-form");
+  const areaSearchStatus = document.getElementById("area-search-status");
+  const areaResultsWrap = document.getElementById("area-results-wrap");
+  const areaResults = document.getElementById("area-results");
+  const siteTypeFilters = Array.from(document.querySelectorAll("[data-site-type]"));
+  const capeBounds = { south: -34.5, west: 18.2, north: -33.5, east: 18.9 };
+  const mappedTypeIds = [1, 9, 10, 11, 12, 15];
   let featuresById = new Map();
+  let allFeatures = [];
+  let areaPlaces = [];
   let selectedFeature = null;
   let selectedLayer = null;
   let parksLayer = null;
   let map = null;
-  let enquiryPrepared = false;
+  let lastGeocodeRequest = 0;
+  let activeAreaName = "";
 
   if (typeof L === "undefined" || !mapElement) {
     showDataError("The map library could not be loaded. Check your connection and reload to try again.");
@@ -38,61 +46,173 @@
     }
   }).addTo(map);
 
-  loadParks();
-  loadReadiness();
+  loadParks(capeBounds, false);
   proposalForm.addEventListener("submit", generateEnquiry);
   copyButton.addEventListener("click", copyEnquiry);
   siteSelect.addEventListener("change", function () {
     if (siteSelect.value) selectSite(siteSelect.value);
   });
+  areaSearchForm.addEventListener("submit", searchAreas);
+  areaResults.addEventListener("change", function () {
+    if (!areaResults.value) return;
+    const place = areaPlaces[Number(areaResults.value)];
+    if (place) loadAreaSites(place);
+  });
+  siteTypeFilters.forEach(function (filter) {
+    filter.addEventListener("change", applySiteFilters);
+  });
 
-  async function loadParks() {
-    const params = new URLSearchParams({
-      where: "LU_PARK_TYPE IN (1,9,10,11)",
-      outFields: "OBJECTID,PARK_NAME,LU_PARK_TYPE,ACS_ADR,PLAY_EQPM,SUB_AREA",
-      returnGeometry: "true",
-      outSR: "4326",
-      resultRecordCount: "1000",
-      geometry: JSON.stringify({
-        xmin: 18.2, ymin: -34.5, xmax: 18.9, ymax: -33.5,
-        spatialReference: { wkid: 4326 }
-      }),
-      geometryType: "esriGeometryEnvelope",
-      inSR: "4326",
-      spatialRel: "esriSpatialRelIntersects",
-      f: "geojson"
-    });
-
+  async function loadParks(bounds, paginate) {
+    const isAreaSearch = Boolean(paginate);
+    siteSelect.disabled = true;
+    statusElement.classList.remove("error");
+    statusElement.textContent = isAreaSearch
+      ? "Loading official mapped sites in and near the selected area…"
+      : "Loading official Cape Town park classifications…";
     try {
+      allFeatures = await queryParks(bounds, paginate);
+      featuresById = new Map(allFeatures.map(function (feature) {
+        return [String(feature.properties.OBJECTID), feature];
+      }));
+      if (selectedLayer) selectedLayer = null;
+      selectedFeature = null;
+      siteDetails.hidden = true;
+      activeAreaName = isAreaSearch ? areaResults.options[areaResults.selectedIndex].text : "";
+      applySiteFilters();
+    } catch (error) {
+      siteSelect.disabled = true;
+      siteSelect.innerHTML = '<option value="">Official sites unavailable</option>';
+      showDataError("City of Cape Town park data is temporarily unavailable. The base map remains available; try again later.");
+      console.error("Could not load official park data:", error);
+    }
+  }
+
+  async function queryParks(bounds, paginate) {
+    const collected = [];
+    const seenIds = new Set();
+    let offset = 0;
+    const maxPages = paginate ? 20 : 1;
+    for (let page = 0; page < maxPages; page += 1) {
+      const params = new URLSearchParams({
+        where: "LU_PARK_TYPE IN (" + mappedTypeIds.join(",") + ")",
+        outFields: "OBJECTID,PARK_NAME,LU_PARK_TYPE,ACS_ADR,PLAY_EQPM,SUB_AREA",
+        returnGeometry: "true",
+        outSR: "4326",
+        resultRecordCount: "1000",
+        geometry: JSON.stringify({
+          xmin: bounds.west, ymin: bounds.south, xmax: bounds.east, ymax: bounds.north,
+          spatialReference: { wkid: 4326 }
+        }),
+        geometryType: "esriGeometryEnvelope",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        f: "geojson"
+      });
+      if (paginate) {
+        params.set("resultOffset", String(offset));
+        params.set("orderByFields", "OBJECTID");
+      }
+
       const response = await fetch(layerUrl + "?" + params.toString());
       if (!response.ok) throw new Error("City map service responded with " + response.status);
       const data = await response.json();
       if (data.error) throw new Error(data.error.message || "City map service returned an error.");
       if (!Array.isArray(data.features)) throw new Error("The City map service returned an unexpected response.");
 
-      const features = data.features.filter(function (feature) {
-        return feature && feature.geometry && feature.properties && feature.properties.OBJECTID != null;
+      data.features.forEach(function (feature) {
+        if (!feature || !feature.geometry || !feature.properties || feature.properties.OBJECTID == null) return;
+        const id = String(feature.properties.OBJECTID);
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          collected.push(feature);
+        }
       });
-      if (!features.length) {
-        siteSelect.innerHTML = '<option value="">No sites found in this area</option>';
-        statusElement.textContent = "No matching public-open-space features were returned for the Cape Town map area.";
-        return;
-      }
 
-      featuresById = new Map(features.map(function (feature) {
-        return [String(feature.properties.OBJECTID), feature];
-      }));
-      parksLayer.addData({ type: "FeatureCollection", features: features });
-      populateSiteOptions(features);
-      statusElement.textContent = features.length === 1000
-        ? "Showing the first 1,000 mapped public parks and open spaces in the Cape Town area."
-        : features.length + " mapped public parks and open spaces available in this area.";
-    } catch (error) {
-      siteSelect.disabled = true;
-      siteSelect.innerHTML = '<option value="">Official sites unavailable</option>';
-      showDataError("City of Cape Town park data is temporarily unavailable. The base map remains available; try reloading later.");
-      console.error("Could not load official park data:", error);
+      if (!paginate || !data.exceededTransferLimit || !data.features.length) break;
+      offset += data.features.length;
+      if (page === maxPages - 1) {
+        throw new Error("The selected area contains too many records to load at once. Choose a smaller suburb or area.");
+      }
     }
+    return collected;
+  }
+
+  async function searchAreas(event) {
+    event.preventDefault();
+    const query = document.getElementById("area-search").value.trim();
+    if (!query) return;
+    const button = areaSearchForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    areaSearchStatus.classList.remove("error");
+    areaSearchStatus.textContent = "Searching Cape Town areas…";
+
+    try {
+      const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeRequest));
+      if (wait) await new Promise(function (resolve) { window.setTimeout(resolve, wait); });
+      lastGeocodeRequest = Date.now();
+      const params = new URLSearchParams({
+        q: query + ", Cape Town, South Africa",
+        format: "jsonv2",
+        countrycodes: "za",
+        limit: "5"
+      });
+      const response = await fetch("https://nominatim.openstreetmap.org/search?" + params.toString(), {
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error("Place search responded with " + response.status);
+      const places = await response.json();
+      areaPlaces = places.filter(isCapeTownPlace);
+      areaResults.replaceChildren(new Option("Select a matching Cape Town area…", ""));
+      areaPlaces.forEach(function (place, index) {
+        areaResults.appendChild(new Option(place.display_name, String(index)));
+      });
+      areaResultsWrap.hidden = false;
+      areaSearchStatus.textContent = areaPlaces.length
+        ? areaPlaces.length + " matching Cape Town area" + (areaPlaces.length === 1 ? "" : "s") + " found. Choose one to view nearby sites."
+        : "No matching Cape Town suburb or area found. Try a nearby suburb name.";
+    } catch (error) {
+      areaResultsWrap.hidden = true;
+      areaSearchStatus.textContent = "Area search is temporarily unavailable. You can still explore the Cape Town map.";
+      areaSearchStatus.classList.add("error");
+      console.error("Could not search Cape Town areas:", error);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function isCapeTownPlace(place) {
+    const lat = Number(place.lat);
+    const lon = Number(place.lon);
+    return Number.isFinite(lat) && Number.isFinite(lon) &&
+      lat >= capeBounds.south && lat <= capeBounds.north &&
+      lon >= capeBounds.west && lon <= capeBounds.east;
+  }
+
+  function loadAreaSites(place) {
+    const lat = Number(place.lat);
+    const lon = Number(place.lon);
+    let bounds = {
+      south: lat - 0.02,
+      west: lon - 0.02,
+      north: lat + 0.02,
+      east: lon + 0.02
+    };
+    if (Array.isArray(place.boundingbox) && place.boundingbox.length === 4) {
+      const [south, north, west, east] = place.boundingbox.map(Number);
+      if ([south, north, west, east].every(Number.isFinite) &&
+          north - south <= 0.12 && east - west <= 0.12) {
+        bounds = { south: south - 0.015, west: west - 0.015, north: north + 0.015, east: east + 0.015 };
+      }
+    }
+    bounds = {
+      south: Math.max(capeBounds.south, bounds.south),
+      west: Math.max(capeBounds.west, bounds.west),
+      north: Math.min(capeBounds.north, bounds.north),
+      east: Math.min(capeBounds.east, bounds.east)
+    };
+    const nearbyBounds = L.latLngBounds([bounds.south, bounds.west], [bounds.north, bounds.east]);
+    map.fitBounds(nearbyBounds, { maxZoom: 14 });
+    loadParks(bounds, true);
   }
 
   function populateSiteOptions(features) {
@@ -104,7 +224,37 @@
       option.textContent = displayName(feature.properties);
       siteSelect.appendChild(option);
     });
-    siteSelect.disabled = false;
+    siteSelect.disabled = features.length === 0;
+    if (!features.length) siteSelect.innerHTML = '<option value="">No sites match these filters</option>';
+  }
+
+  function applySiteFilters() {
+    const activeTypes = new Set();
+    siteTypeFilters.forEach(function (filter) {
+      if (!filter.checked) return;
+      filter.dataset.siteType.split(",").forEach(function (type) { activeTypes.add(Number(type)); });
+    });
+    const visibleFeatures = allFeatures.filter(function (feature) {
+      return activeTypes.has(Number(feature.properties.LU_PARK_TYPE));
+    });
+    parksLayer.clearLayers();
+    if (visibleFeatures.length) parksLayer.addData({ type: "FeatureCollection", features: visibleFeatures });
+    populateSiteOptions(visibleFeatures);
+
+    if (selectedFeature && !visibleFeatures.some(function (feature) {
+      return String(feature.properties.OBJECTID) === String(selectedFeature.properties.OBJECTID);
+    })) {
+      selectedFeature = null;
+      selectedLayer = null;
+      siteDetails.hidden = true;
+    }
+
+    const location = activeAreaName ? " near " + activeAreaName : " in the Cape Town area";
+    statusElement.classList.remove("error");
+    statusElement.textContent = visibleFeatures.length
+      ? visibleFeatures.length + " mapped site" + (visibleFeatures.length === 1 ? "" : "s") + " shown" + location +
+        (activeAreaName ? "." : ". The citywide view is limited to the first 1,000 results; search a suburb for nearby sites.")
+      : "No mapped sites match these type filters" + location + ".";
   }
 
   function selectSite(id) {
@@ -123,7 +273,6 @@
       selectedLayer.openPopup();
     }
     renderSiteDetails(feature.properties);
-    updateReadiness();
   }
 
   function renderSiteDetails(properties) {
@@ -145,6 +294,40 @@
       list.append(term, value);
     });
     siteDetails.hidden = false;
+    updateSiteGuidance(properties);
+  }
+
+  function updateSiteGuidance(properties) {
+    const container = document.getElementById("site-start-guidance");
+    const type = Number(properties.LU_PARK_TYPE);
+    container.replaceChildren();
+
+    const heading = document.createElement("h5");
+    heading.textContent = "How could I start a project here?";
+    container.appendChild(heading);
+
+    const classification = document.createElement("p");
+    classification.className = "mapped-classification";
+    classification.textContent = type === 12
+      ? "Mapped as UNDEVELOPED. This classification does not mean the site is available for community use or approved."
+      : type === 15
+        ? "Mapped as COMMUNITY GARDEN. This does not confirm current access, availability or permission for another project."
+        : "Mapped as " + parkTypeName(type).toUpperCase() + ". This does not confirm availability, access or permission for your proposed activity.";
+    container.appendChild(classification);
+
+    const steps = document.createElement("ol");
+    [
+      "Ask the City to confirm who owns and manages this land.",
+      "Ask whether your idea can be considered here, including zoning and site restrictions.",
+      "Request the applicable written permission and application process before doing any work.",
+      "Talk with nearby residents and potential partners about shared roles and long-term care.",
+      "Confirm whether water can be accessed and what conditions apply."
+    ].forEach(function (text) {
+      const step = document.createElement("li");
+      step.textContent = text;
+      steps.appendChild(step);
+    });
+    container.appendChild(steps);
   }
 
   function generateEnquiry(event) {
@@ -155,23 +338,22 @@
       document.getElementById("site-select").focus();
       return;
     }
-    if (!proposalForm.reportValidity()) return;
-
     const p = selectedFeature.properties;
+    const activity = value("opportunity");
     const answers = {
-      purpose: value("purpose"),
-      participants: value("participants"),
-      benefits: value("benefits"),
-      water: value("water") || "To be explored with the municipality and community.",
-      soil: value("soil") || "To be developed with local ecological and soil knowledge.",
-      maintenance: value("maintenance") || "To be discussed with potential community partners."
+      purpose: value("purpose") || "We are at an early idea stage and would welcome guidance on whether this could be considered.",
+      participants: value("participants") || "We are still exploring who might take part.",
+      benefits: value("benefits") || "We are still exploring potential community benefits.",
+      water: value("water") || "We would like to understand whether water access is possible and what conditions apply.",
+      soil: value("soil") || "We would like to discuss suitable soil restoration approaches if the site could be considered.",
+      maintenance: value("maintenance") || "We would like guidance on the stewardship responsibilities expected."
     };
     proposalOutput.value = [
-      "Subject: Enquiry about a regenerative community project at " + displayName(p),
+      "Subject: Preliminary enquiry about " + activity.toLowerCase() + " at " + displayName(p),
       "",
       "Dear City of Cape Town team,",
       "",
-      "Our community is exploring a " + value("opportunity").toLowerCase() + " at " + displayName(p) + ". The site is identified in the City of Cape Town Parks map layer" + (p.OBJECTID != null ? " (OBJECTID " + p.OBJECTID + ")" : "") + (p.ACS_ADR ? ", with mapped access address " + p.ACS_ADR : "") + ". We understand this map record does not confirm ownership, public access, suitability or permission for our proposed activity.",
+      "We are exploring a " + activity.toLowerCase() + " at " + displayName(p) + ". The City of Cape Town Parks layer maps this site as " + parkTypeName(p.LU_PARK_TYPE).toUpperCase() + (p.OBJECTID != null ? " (OBJECTID " + p.OBJECTID + ")" : "") + (p.ACS_ADR ? ", with mapped access address " + p.ACS_ADR : "") + ". This mapped classification does not confirm land availability, ownership, access, suitability or permission.",
       "",
       "Project purpose: " + answers.purpose,
       "Intended participants: " + answers.participants,
@@ -180,24 +362,23 @@
       "Soil restoration approach: " + answers.soil,
       "Ongoing maintenance approach: " + answers.maintenance,
       "",
-      "Could you please confirm:",
-      "1. The current ownership and responsible managing department for this site;",
-      "2. Whether the proposed land use is permitted and what approvals or application steps are required;",
-      "3. Whether water access is possible and what conditions apply;",
-      "4. The maintenance and stewardship responsibilities expected of a community group; and",
-      "5. The correct municipal contact and process for taking this enquiry forward.",
+      "Could you please advise:",
+      "1. Could this mapped site be considered for a " + activity.toLowerCase() + " at all?",
+      "2. Who currently owns and manages this site, and which City department is responsible?",
+      "3. What zoning or other site restrictions should we understand?",
+      "4. What permission, application process and approvals would apply before any activity?",
+      "5. Could water be accessed for this purpose, and what conditions would apply?",
+      "6. What community participation and ongoing stewardship responsibilities would be expected?",
       "",
-      "We will not begin work until ownership, permissions and responsibilities are confirmed. We would welcome guidance on the appropriate next step.",
+      "We will not access, plant or begin work unless the City confirms that the activity may be considered and the required permission is in place. Please direct us to the appropriate department or published process.",
       "",
       "Kind regards,",
       "[Your name / group]",
       "[Contact details]"
     ].join("\n");
     copyButton.disabled = false;
-    enquiryPrepared = true;
     statusElement.classList.remove("error");
     document.getElementById("copy-status").textContent = "";
-    updateReadiness();
   }
 
   async function copyEnquiry() {
@@ -227,47 +408,6 @@
     return copied;
   }
 
-  function loadReadiness() {
-    let saved = {};
-    try {
-      saved = JSON.parse(localStorage.getItem("resourcewise-readiness") || "{}");
-    } catch (error) {
-      console.warn("Could not read the local readiness tracker:", error);
-    }
-    readinessInputs.forEach(function (input) {
-      if (input.dataset.readiness === "site" || input.dataset.readiness === "enquiry") return;
-      input.checked = Boolean(saved[input.dataset.readiness]);
-      input.addEventListener("change", saveReadiness);
-    });
-    updateReadiness();
-  }
-
-  function saveReadiness() {
-    const saved = {};
-    readinessInputs.forEach(function (input) {
-      if (input.dataset.readiness !== "site" && input.dataset.readiness !== "enquiry") {
-        saved[input.dataset.readiness] = input.checked;
-      }
-    });
-    try {
-      localStorage.setItem("resourcewise-readiness", JSON.stringify(saved));
-    } catch (error) {
-      console.warn("Could not save the local readiness tracker:", error);
-    }
-    updateReadiness();
-  }
-
-  function updateReadiness() {
-    const siteInput = document.querySelector('[data-readiness="site"]');
-    const enquiryInput = document.querySelector('[data-readiness="enquiry"]');
-    siteInput.checked = Boolean(selectedFeature);
-    siteInput.disabled = true;
-    enquiryInput.checked = enquiryPrepared;
-    enquiryInput.disabled = true;
-    const complete = readinessInputs.filter(function (input) { return input.checked; }).length;
-    readinessCount.textContent = complete + " / " + readinessInputs.length;
-  }
-
   function showDataError(message) {
     statusElement.textContent = message;
     statusElement.classList.add("error");
@@ -285,8 +425,12 @@
 
   function parkTypeName(code) {
     const types = {
-      1: "Public open space", 9: "District park",
-      10: "Community park", 11: "Greenbelt"
+      1: "Public open space",
+      9: "District park",
+      10: "Community park",
+      11: "Greenbelt",
+      12: "Undeveloped",
+      15: "Community garden"
     };
     return types[code] || "City mapped park type " + code;
   }
