@@ -32,6 +32,9 @@ The readiness tracker is client-side only and stored in this browser. It records
 The map displays only records returned by the City's Parks layer; the query is limited to 1,000 features in the Cape Town bounding area. A listed or mapped site is not evidence that land is available, publicly accessible, approved or suitable for cultivation. Confirm current ownership, permitted use, approvals, water access and maintenance responsibilities with the City before any activity. Data availability depends on the City service and browser connectivity. ResourceWise does not replace municipal advice or site assessment.
 
 ## AI token minimization methods
-Used one focused implementation pass and avoided repeated repository exploration.
-Queried only the official layer metadata needed to build the map integration.
-Kept dependencies to existing static files and CDN libraries; did not spawn agents.
+
+1. **Copilot Fusion:** Selected Copilot Fusion following the hackathon training's guidance on reducing token consumption.
+
+2. **Token-conscious prompting:** Included token minimization instructions in the initial development prompt to encourage focused implementation and efficient use of context.
+
+3. **Targeted development:** Used specific prompts for incremental improvements rather than repeatedly rebuilding the application. Kept the architecture lightweight with static HTML, CSS, JavaScript and existing mapping libraries.
