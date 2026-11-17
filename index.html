@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4e9">
+  <meta name="description" content="Discover Cape Town's officially mapped public green spaces and prepare a thoughtful first step toward regeneration.">
+  <title>ResourceWise — Grow with the land</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="ResourceWise home"><span class="brand-mark" aria-hidden="true">rw</span> ResourceWise</a>
+    <nav aria-label="Main navigation">
+      <a href="#discover">Discover</a>
+      <a href="#start-a-project">Start a project</a>
+      <a href="#learn">Learn</a>
+    </nav>
+    <a class="header-cta" href="#discover">Find a place <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> CAPE TOWN PILOT · LAND, PEOPLE, POSSIBILITY</p>
+        <h1>Good things grow<br>when we <em>grow together.</em></h1>
+        <p class="hero-intro">Find a mapped public green space. Imagine what it could become. Take a thoughtful first step with your community.</p>
+        <a class="button button-dark" href="#discover">Explore green spaces <span aria-hidden="true">↓</span></a>
+        <p class="hero-note">A starting point for conversation — not a land-use approval.</p>
+      </div>
+      <div class="hero-art" aria-label="Illustration of a flourishing community garden">
+        <div class="sun"></div>
+        <div class="hill hill-back"></div>
+        <div class="hill hill-front"></div>
+        <div class="plant plant-one"><i></i><i></i><b></b></div>
+        <div class="plant plant-two"><i></i><i></i><b></b></div>
+        <div class="plant plant-three"><i></i><i></i><b></b></div>
+        <div class="garden-label"><span>01</span> Start with the land</div>
+      </div>
+      <div class="hero-ribbon"><span>Ubuntu in action</span><span>Care is a circle, not a transaction</span><span aria-hidden="true">✳</span></div>
+    </section>
+
+    <section class="intro-strip" aria-label="Our approach">
+      <p>Land holds possibility.</p><span aria-hidden="true">✳</span>
+      <p>Communities hold knowledge.</p><span aria-hidden="true">✳</span>
+      <p>Regeneration begins together.</p>
+    </section>
+
+    <section class="section discover-section" id="discover">
+      <div class="section-heading">
+        <div><p class="eyebrow">01 / DISCOVER</p><h2>Start with a place.</h2></div>
+        <p class="section-lede">Explore public green spaces mapped by the City of Cape Town. Select a site on the map or in the list to begin.</p>
+      </div>
+      <div class="map-layout">
+        <div class="map-wrap">
+          <div id="map" role="application" aria-label="Map of Cape Town parks and public open spaces"></div>
+          <div class="map-legend"><span></span> City mapped green spaces</div>
+        </div>
+        <aside class="site-panel" aria-labelledby="site-heading">
+          <div class="panel-top"><span class="panel-kicker">CAPE TOWN · CITY MAPS</span><span class="live-dot" aria-hidden="true"></span></div>
+          <h3 id="site-heading">Find your starting point</h3>
+          <p class="muted">Only official sites returned by the City map service can be selected.</p>
+          <label for="site-select">Mapped site</label>
+          <select id="site-select" disabled>
+            <option value="">Loading mapped sites…</option>
+          </select>
+          <p id="data-status" class="data-status" role="status" aria-live="polite">Connecting to City of Cape Town map data…</p>
+          <div id="site-details" class="site-details" hidden>
+            <p class="detail-label">OFFICIAL SITE NAME</p>
+            <h4 id="selected-name"></h4>
+            <dl id="selected-attributes"></dl>
+          </div>
+          <p class="site-disclaimer">Mapped does not mean available, accessible, approved or suitable for cultivation. Confirm ownership and permissions before any activity.</p>
+          <a class="text-link" href="https://citymaps.capetown.gov.za/agsext/rest/services/Theme_Based/ODP_SPLIT_2/FeatureServer/3" target="_blank" rel="noopener noreferrer">View City source layer <span aria-hidden="true">↗</span></a>
+        </aside>
+      </div>
+      <p class="source-note">Official source: City of Cape Town ArcGIS FeatureServer · Parks layer. Map tiles © OpenStreetMap contributors.</p>
+    </section>
+
+    <section class="section project-section" id="start-a-project">
+      <div class="section-heading">
+        <div><p class="eyebrow">02 / IMAGINE</p><h2>What could grow here?</h2></div>
+        <p class="section-lede">Shape an idea around the people and place. Your answers help draft an enquiry — they don’t submit it.</p>
+      </div>
+      <div class="project-grid">
+        <form id="proposal-form" class="proposal-form">
+          <div class="form-step"><span>01</span><div><h3>Choose an opportunity</h3><p>What would you like to explore?</p></div></div>
+          <label for="opportunity">Regenerative idea</label>
+          <select id="opportunity" required>
+            <option value="Community food garden">Community food garden</option>
+            <option value="Food forest">Food forest</option>
+            <option value="Composting hub">Composting hub</option>
+            <option value="Edible indigenous garden">Edible indigenous garden</option>
+            <option value="Flower-growing initiative">Flower-growing initiative</option>
+            <option value="Regenerative social enterprise">Regenerative social enterprise</option>
+          </select>
+          <div class="form-step form-step-spaced"><span>02</span><div><h3>Share the outline</h3><p>A few details make a stronger first conversation.</p></div></div>
+          <label for="purpose">What is the purpose of this project?</label>
+          <textarea id="purpose" rows="3" placeholder="What would you like to grow, restore or make possible?" required></textarea>
+          <label for="participants">Who would take part?</label>
+          <textarea id="participants" rows="2" placeholder="Neighbours, a school, a local group…" required></textarea>
+          <label for="benefits">What would the community gain?</label>
+          <textarea id="benefits" rows="2" placeholder="Food, skills, livelihoods, connection…" required></textarea>
+          <div class="form-row">
+            <div><label for="water">Water approach or questions</label><textarea id="water" rows="2" placeholder="What needs to be explored?"></textarea></div>
+            <div><label for="soil">Soil restoration approach</label><textarea id="soil" rows="2" placeholder="Compost, ground cover, soil health…"></textarea></div>
+          </div>
+          <label for="maintenance">How could ongoing care be shared?</label>
+          <textarea id="maintenance" rows="2" placeholder="Who might steward the space, and how?"></textarea>
+          <button class="button button-dark generate-button" type="submit">Draft a municipal enquiry <span aria-hidden="true">→</span></button>
+          <p class="form-hint">Select an official mapped site above before drafting.</p>
+        </form>
+
+        <div class="proposal-side">
+          <div class="draft-card">
+            <div class="draft-head"><div><p class="eyebrow">YOUR FIRST CONVERSATION</p><h3>Municipal enquiry</h3></div><span class="draft-icon" aria-hidden="true">↗</span></div>
+            <p class="muted">Review and edit your enquiry before copying it. Nothing is sent automatically.</p>
+            <textarea id="proposal-output" rows="15" aria-label="Editable generated municipal enquiry" placeholder="Choose an official mapped site, fill in your project outline, then select “Draft a municipal enquiry”." spellcheck="true"></textarea>
+            <div class="copy-row"><button id="copy-button" class="button button-outline" type="button" disabled>Copy enquiry</button><span id="copy-status" role="status" aria-live="polite"></span></div>
+          </div>
+          <div class="readiness-card">
+            <div class="readiness-heading"><div><p class="eyebrow">BEFORE ANY PLANTING</p><h3>Project readiness</h3></div><span class="readiness-count" id="readiness-count">0 / 6</span></div>
+            <p class="muted">A lightweight personal tracker saved on this device. Mapped status is not permission.</p>
+            <ul id="readiness-list" class="readiness-list">
+              <li><label><input type="checkbox" data-readiness="site"><span>Site identified</span></label></li>
+              <li><label><input type="checkbox" data-readiness="enquiry"><span>Municipal enquiry prepared</span></label></li>
+              <li><label><input type="checkbox" data-readiness="permission"><span>Permission status confirmed (still pending)</span></label></li>
+              <li><label><input type="checkbox" data-readiness="water"><span>Water feasibility investigated</span></label></li>
+              <li><label><input type="checkbox" data-readiness="partners"><span>Community partners identified</span></label></li>
+              <li><label><input type="checkbox" data-readiness="stewardship"><span>Stewardship plan developed</span></label></li>
+            </ul>
+            <p class="permission-note">Before planting: confirm land ownership, permitted use, municipal approvals, water access and long-term maintenance responsibilities.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="learn-section" id="learn">
+      <div class="learn-inner">
+        <div class="learn-intro"><p class="eyebrow">03 / LEARN</p><h2>Regeneration is a circle.</h2><p>Organic waste becomes compost; compost feeds living soil; healthy soil grows food; shared food nourishes people and community. Every step can return value to the land.</p><span class="circle-mark" aria-hidden="true">↻</span></div>
+        <div class="learn-topics">
+          <article><span class="topic-number">01</span><h3>Composting</h3><p>Turn organic leftovers into a resource that feeds soil instead of going to waste.</p></article>
+          <article><span class="topic-number">02</span><h3>Soil regeneration</h3><p>Protect soil with organic matter, living roots and ground cover; build its ability to hold water and support life.</p></article>
+          <article><span class="topic-number">03</span><h3>Seed saving</h3><p>Save and share locally adapted seeds to strengthen food resilience, knowledge and connection.</p></article>
+        </div>
+        <div class="learn-links">
+          <div><p class="eyebrow">KEEP EXPLORING</p><h3>Learn from the wider community.</h3></div>
+          <a href="https://www.freepermaculture.com/onlinecourse/" target="_blank" rel="noopener noreferrer"><span>Free Permaculture Online Course</span><span aria-hidden="true">↗</span></a>
+          <a href="https://www.permaculturesouthafrica.co.za/what-is-permaculture-free-course/" target="_blank" rel="noopener noreferrer"><span>Permaculture South Africa · Free course</span><span aria-hidden="true">↗</span></a>
+          <a href="https://www.permaculture.org.uk/ipen/education-resources" target="_blank" rel="noopener noreferrer"><span>Permaculture Association · Learning resources</span><span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true">rw</span> ResourceWise</a><p>Care for land. Care for people. Grow together.</p><span>Cape Town pilot · Built around Ubuntu</span></footer>
+</body>
+</html>
